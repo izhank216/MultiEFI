@@ -26,9 +26,11 @@ jobs:
             -fpic -fshort-wchar -mno-red-zone -fno-stack-protector \
             -DEFI_FUNCTION_WRAPPER \
             -c src/MultiEFI.c -o build/x64/MultiEFI.o
-        ld -nostdlib -znocombreloc -shared -Bsymbolic \
+        ld -nostdlib -shared -Bsymbolic \
             -T /usr/lib/elf_x86_64_efi.lds \
-            build/x64/MultiEFI.o -o build/x64/bootx64.efi
+            build/x64/MultiEFI.o \
+            -o build/x64/bootx64.efi \
+            -Wl,--subsystem,10 -Wl,--entry,efi_main
 
     - name: Build i386 EFI
       run: |
@@ -37,9 +39,11 @@ jobs:
             -fpic -fshort-wchar -fno-stack-protector \
             -DEFI_FUNCTION_WRAPPER \
             -c src/MultiEFI.c -o build/i386/MultiEFI.o
-        ld -m elf_i386 -nostdlib -znocombreloc -shared -Bsymbolic \
+        ld -m elf_i386 -nostdlib -shared -Bsymbolic \
             -T /usr/lib32/elf_ia32_efi.lds \
-            build/i386/MultiEFI.o -o build/i386/bootia32.efi
+            build/i386/MultiEFI.o \
+            -o build/i386/bootia32.efi \
+            -Wl,--subsystem,10 -Wl,--entry,efi_main
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
