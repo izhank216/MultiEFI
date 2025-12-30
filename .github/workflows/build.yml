@@ -12,7 +12,7 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Install dependencies
       run: |
@@ -38,7 +38,7 @@ jobs:
         aarch64-linux-gnu-ld -nostdlib -znocombreloc -shared -Bsymbolic -T /usr/lib/elf_aarch64_efi.lds build/arm64/MultiEFI.o -o build/arm64/bootaa64.efi
 
     - name: Upload Artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: MultiEFI-Binaries
         path: build/
