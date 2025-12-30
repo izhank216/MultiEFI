@@ -10,6 +10,15 @@ typedef struct {
     CHAR16 Path[MAX_PATH];
 } OS_ENTRY;
 
+// Helper to find a character in a CHAR16 string
+CHAR16* find_char(CHAR16* str, CHAR16 c) {
+    while (*str) {
+        if (*str == c) return str;
+        str++;
+    }
+    return NULL;
+}
+
 EFI_STATUS EFIAPI LoadOS(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable, CHAR16 *Path) {
     EFI_STATUS Status;
     EFI_HANDLE OSHandle = NULL;
@@ -66,7 +75,7 @@ EFI_STATUS EFIAPI ReadConfig(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTab
             Buffer[sizeof(Buffer)/sizeof(CHAR16)-1] = L'\0';
 
         // Parse Name=Path
-        CHAR16 *Eq = StrChr(Buffer, L'=');
+        CHAR16 *Eq = find_char(Buffer, L'=');
         if (Eq) {
             *Eq = 0;
             StrCpy(Entries[*Count].Name, Buffer);
