@@ -17,7 +17,12 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev
+        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev  gnu-efi:i386 gnu-efi-arm64
+        dpkg -L gnu-efi
+        dpkg -L gnu-efi | grep '\.lds$'
+        dpkg -L gnu-efi | grep 'crt0-efi'
+        dpkg -L gnu-efi | grep '\.h$'
+
 
     - name: Build x86_64 EFI
       run: |
