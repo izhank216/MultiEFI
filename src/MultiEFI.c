@@ -14,27 +14,27 @@ EFI_STATUS EFIAPI LoadOS(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable, 
     EFI_STATUS Status;
     EFI_HANDLE OSHandle = NULL;
 
-    Status = SystemTable->BootServices->LoadImage(FALSE, ImageHandle, NULL, NULL, 0, &OSHandle);
-    if (EFI_ERROR(Status)) return Status;
+    // Convert file path to EFI device path
+    EFI_DEVICE_PATH_PROTOCOL *DevicePath = FileDevicePath(NULL, Path);
+    if (!DevicePath) {
+        Print(L"Failed to create device path for %s\n", Path);
+        return EFI_NOT_FOUND;
+    }
 
-    EFI_FILE_PROTOCOL *Root;
-    EFI_SIMPLE_FILE_SYSTEM_PROTOCOL *Fs;
-    Status = SystemTable->BootServices->HandleProtocol(
-        ImageHandle, &gEfiSimpleFileSystemProtocolGuid, (VOID **)&Fs
-    );
-    if (EFI_ERROR(Status)) return Status;
+    // Load the EFI image
+    Status = SystemTable->BootServices->LoadImage(FALSE, ImageHandle, DevicePath, NULL, 0, &OSHandle);
+    if (EFI_ERROR(Status)) {
+        Print(L"Failed to load image %s: %r\n", Path, Status);
+        return Status;
+    }
 
-    Status = Fs->OpenVolume(Fs, &Root);
-    if (EFI_ERROR(Status)) return Status;
+    // Start the loaded image
+    Status = SystemTable->BootServices->StartImage(OSHandle, NULL, NULL);
+    if (EFI_ERROR(Status)) {
+        Print(L"Failed to start image %s: %r\n", Path, Status);
+    }
 
-    EFI_FILE_PROTOCOL *File;
-    Status = Root->Open(Root, &File, Path, EFI_FILE_MODE_READ, 0);
-    if (EFI_ERROR(Status)) return Status;
-
-    Status = SystemTable->BootServices->LoadImage(FALSE, ImageHandle, File, NULL, 0, &OSHandle);
-    if (EFI_ERROR(Status)) return Status;
-
-    return SystemTable->BootServices->StartImage(OSHandle, NULL, NULL);
+    return Status;
 }
 
 EFI_STATUS EFIAPI ReadConfig(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable, OS_ENTRY *Entries, UINTN *Count) {
@@ -47,8 +47,10 @@ EFI_STATUS EFIAPI ReadConfig(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTab
 
     *Count = 0;
 
-    SystemTable->BootServices->HandleProtocol(ImageHandle, &gEfiSimpleFileSystemProtocolGuid, (VOID**)&Fs);
-    Fs->OpenVolume(Fs, &Root);
+    if (SystemTable->BootServices->HandleProtocol(ImageHandle, &gEfiSimpleFileSystemProtocolGuid, (VOID**)&Fs) != EFI_SUCCESS)
+        return EFI_NOT_FOUND;
+    if (Fs->OpenVolume(Fs, &Root) != EFI_SUCCESS)
+        return EFI_NOT_FOUND;
     if (Root->Open(Root, &File, ConfigPath, EFI_FILE_MODE_READ, 0) != EFI_SUCCESS)
         return EFI_NOT_FOUND;
 
@@ -57,8 +59,14 @@ EFI_STATUS EFIAPI ReadConfig(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTab
         EFI_STATUS Status = File->Read(File, &BufferSize, Buffer);
         if (EFI_ERROR(Status) || BufferSize == 0) break;
 
-        // Simple parsing: Name=Path
-        CHAR16 *Eq = StrStr(Buffer, L"=");
+        // Null-terminate
+        if (BufferSize < sizeof(Buffer))
+            Buffer[BufferSize / sizeof(CHAR16)] = L'\0';
+        else
+            Buffer[sizeof(Buffer)/sizeof(CHAR16)-1] = L'\0';
+
+        // Parse Name=Path
+        CHAR16 *Eq = StrChr(Buffer, L'=');
         if (Eq) {
             *Eq = 0;
             StrCpy(Entries[*Count].Name, Buffer);
@@ -84,21 +92,21 @@ EFI_STATUS EFIAPI efi_main(EFI_HANDLE ImageHandle, EFI_SYSTEM_TABLE *SystemTable
     }
 
     // Display menu
-    for (UINTN i = 0; i < OSCount; i++) {
+    for (UINTN i = 0; i < OSCount; i++)
         Print(L"%d. %s\n", i + 1, Entries[i].Name);
-    }
+
     Print(L"Select OS (default in %d seconds): ", TIMEOUT_SECONDS);
 
     EFI_INPUT_KEY Key;
-    UINTN Index;
+    UINTN WaitIndex;
     UINTN DefaultIndex = 0;
 
+    // Create timer for timeout
     EFI_EVENT TimerEvent;
     SystemTable->BootServices->CreateEvent(EVT_TIMER, 0, NULL, NULL, &TimerEvent);
     SystemTable->BootServices->SetTimer(TimerEvent, TimerRelative, TIMEOUT_SECONDS * 10000000);
 
     EFI_EVENT WaitList[2] = { SystemTable->ConIn->WaitForKey, TimerEvent };
-    UINTN WaitIndex;
     SystemTable->BootServices->WaitForEvent(2, WaitList, &WaitIndex);
 
     if (WaitIndex == 0) {
