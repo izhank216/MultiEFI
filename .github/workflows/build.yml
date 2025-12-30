@@ -29,8 +29,7 @@ jobs:
         ld -nostdlib -shared -Bsymbolic \
             -T /usr/lib/elf_x86_64_efi.lds \
             build/x64/MultiEFI.o \
-            -o build/x64/bootx64.efi \
-            -Wl,--subsystem,10 -Wl,--entry,efi_main
+            -o build/x64/bootx64.efi
 
     - name: Build i386 EFI
       run: |
@@ -42,8 +41,7 @@ jobs:
         ld -m elf_i386 -nostdlib -shared -Bsymbolic \
             -T /usr/lib32/elf_ia32_efi.lds \
             build/i386/MultiEFI.o \
-            -o build/i386/bootia32.efi \
-            -Wl,--subsystem,10 -Wl,--entry,efi_main
+            -o build/i386/bootia32.efi
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
