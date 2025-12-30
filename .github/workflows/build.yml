@@ -17,8 +17,8 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev \
-                            aarch64-linux-gnu-gcc  # For ARM64 cross-compiling
+         sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev \
+                        gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
 
     - name: Build x86_64 EFI
       run: |
