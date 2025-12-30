@@ -17,8 +17,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-         sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev \
-                        gcc-aarch64-linux-gnu g++-aarch64-linux-gnu
+        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev
 
     - name: Build x86_64 EFI
       run: |
@@ -41,17 +40,6 @@ jobs:
         ld -m elf_i386 -nostdlib -znocombreloc -shared -Bsymbolic \
             -T /usr/lib32/elf_ia32_efi.lds \
             build/i386/MultiEFI.o -o build/i386/bootia32.efi
-
-    - name: Build ARM64 EFI
-      run: |
-        mkdir -p build/arm64
-        aarch64-linux-gnu-gcc -I /usr/include/efi -I /usr/include/efi/aarch64 \
-            -fpic -fshort-wchar -fno-stack-protector \
-            -DEFI_FUNCTION_WRAPPER \
-            -c src/MultiEFI.c -o build/arm64/MultiEFI.o
-        aarch64-linux-gnu-ld -nostdlib -znocombreloc -shared -Bsymbolic \
-            -T /usr/lib/elf_aarch64_efi.lds \
-            build/arm64/MultiEFI.o -o build/arm64/bootaa64.efi
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
