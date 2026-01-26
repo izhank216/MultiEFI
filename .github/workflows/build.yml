@@ -17,32 +17,31 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev
+        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev \
+            mingw-w64
 
-    - name: Build x86_64 EFI
+    - name: Build x86_64 EFI (PE/COFF)
       run: |
         mkdir -p build/x64
-        gcc -I /usr/include/efi -I /usr/include/efi/x86_64 \
-            -fpic -fshort-wchar -fno-stack-protector -ffreestanding \
+        x86_64-w64-mingw32-gcc -I /usr/include/efi -I /usr/include/efi/x86_64 \
+            -ffreestanding -fpic -fshort-wchar -fno-stack-protector \
             -DEFI_FUNCTION_WRAPPER \
             -c src/MultiEFI.c -o build/x64/MultiEFI.o
 
-        ld -nostdlib -znocombreloc -shared -Bsymbolic \
-            -T /usr/lib/elf_x86_64_efi.lds \
-            build/x64/MultiEFI.o \
+        x86_64-w64-mingw32-ld -nostdlib -T /usr/lib/elf_x86_64_efi.lds \
+            -shared -Bsymbolic build/x64/MultiEFI.o \
             -o build/x64/bootx64.efi
 
-    - name: Build i386 EFI
+    - name: Build i386 EFI (PE/COFF)
       run: |
         mkdir -p build/i386
-        gcc -m32 -I /usr/include/efi -I /usr/include/efi/ia32 \
-            -fpic -fshort-wchar -fno-stack-protector -ffreestanding \
+        i686-w64-mingw32-gcc -m32 -I /usr/include/efi -I /usr/include/efi/ia32 \
+            -ffreestanding -fpic -fshort-wchar -fno-stack-protector \
             -DEFI_FUNCTION_WRAPPER \
             -c src/MultiEFI.c -o build/i386/MultiEFI.o
 
-        ld -m elf_i386 -nostdlib -znocombreloc -shared -Bsymbolic \
-            -T /usr/lib32/elf_ia32_efi.lds \
-            build/i386/MultiEFI.o \
+        i686-w64-mingw32-ld -m elf_i386 -nostdlib -T /usr/lib32/elf_ia32_efi.lds \
+            -shared -Bsymbolic build/i386/MultiEFI.o \
             -o build/i386/bootia32.efi
 
     - name: Upload Artifacts
