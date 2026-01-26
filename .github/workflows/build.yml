@@ -22,8 +22,9 @@ jobs:
     - name: Build x86_64 EFI (PE/COFF)
       run: |
         mkdir -p build/x64
-        # Compile to PE/COFF object
         x86_64-w64-mingw32-gcc \
+          -I /usr/include/efi \
+          -I /usr/include/efi/x86_64 \
           -c src/MultiEFI.c \
           -o build/x64/MultiEFI.o \
           -DEFI_FUNCTION_WRAPPER \
@@ -33,7 +34,6 @@ jobs:
           -mno-red-zone \
           -Wall
 
-        # Link to PE/COFF EFI binary
         x86_64-w64-mingw32-ld \
           -nostdlib \
           -T /usr/lib/elf_x86_64_efi.lds \
@@ -44,8 +44,9 @@ jobs:
     - name: Build i386 EFI (PE/COFF)
       run: |
         mkdir -p build/i386
-        # Compile to PE/COFF object
         i686-w64-mingw32-gcc -m32 \
+          -I /usr/include/efi \
+          -I /usr/include/efi/ia32 \
           -c src/MultiEFI.c \
           -o build/i386/MultiEFI.o \
           -DEFI_FUNCTION_WRAPPER \
@@ -54,7 +55,6 @@ jobs:
           -fno-stack-protector \
           -Wall
 
-        # Link to PE/COFF EFI binary
         i686-w64-mingw32-ld -m elf_i386 \
           -nostdlib \
           -T /usr/lib32/elf_ia32_efi.lds \
