@@ -17,32 +17,50 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev \
-            mingw-w64
+        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev mingw-w64
 
     - name: Build x86_64 EFI (PE/COFF)
       run: |
         mkdir -p build/x64
-        x86_64-w64-mingw32-gcc -I /usr/include/efi -I /usr/include/efi/x86_64 \
-            -ffreestanding -fpic -fshort-wchar -fno-stack-protector \
-            -DEFI_FUNCTION_WRAPPER \
-            -c src/MultiEFI.c -o build/x64/MultiEFI.o
+        # Compile to PE/COFF object
+        x86_64-w64-mingw32-gcc \
+          -c src/MultiEFI.c \
+          -o build/x64/MultiEFI.o \
+          -DEFI_FUNCTION_WRAPPER \
+          -ffreestanding \
+          -fshort-wchar \
+          -fno-stack-protector \
+          -mno-red-zone \
+          -Wall
 
-        x86_64-w64-mingw32-ld -nostdlib -T /usr/lib/elf_x86_64_efi.lds \
-            -shared -Bsymbolic build/x64/MultiEFI.o \
-            -o build/x64/bootx64.efi
+        # Link to PE/COFF EFI binary
+        x86_64-w64-mingw32-ld \
+          -nostdlib \
+          -T /usr/lib/elf_x86_64_efi.lds \
+          -shared -Bsymbolic \
+          build/x64/MultiEFI.o \
+          -o build/x64/bootx64.efi
 
     - name: Build i386 EFI (PE/COFF)
       run: |
         mkdir -p build/i386
-        i686-w64-mingw32-gcc -m32 -I /usr/include/efi -I /usr/include/efi/ia32 \
-            -ffreestanding -fpic -fshort-wchar -fno-stack-protector \
-            -DEFI_FUNCTION_WRAPPER \
-            -c src/MultiEFI.c -o build/i386/MultiEFI.o
+        # Compile to PE/COFF object
+        i686-w64-mingw32-gcc -m32 \
+          -c src/MultiEFI.c \
+          -o build/i386/MultiEFI.o \
+          -DEFI_FUNCTION_WRAPPER \
+          -ffreestanding \
+          -fshort-wchar \
+          -fno-stack-protector \
+          -Wall
 
-        i686-w64-mingw32-ld -m elf_i386 -nostdlib -T /usr/lib32/elf_ia32_efi.lds \
-            -shared -Bsymbolic build/i386/MultiEFI.o \
-            -o build/i386/bootia32.efi
+        # Link to PE/COFF EFI binary
+        i686-w64-mingw32-ld -m elf_i386 \
+          -nostdlib \
+          -T /usr/lib32/elf_ia32_efi.lds \
+          -shared -Bsymbolic \
+          build/i386/MultiEFI.o \
+          -o build/i386/bootia32.efi
 
     - name: Upload Artifacts
       uses: actions/upload-artifact@v4
