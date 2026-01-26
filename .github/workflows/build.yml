@@ -23,10 +23,11 @@ jobs:
       run: |
         mkdir -p build/x64
         gcc -I /usr/include/efi -I /usr/include/efi/x86_64 \
-            -fpic -fshort-wchar -mno-red-zone -fno-stack-protector \
+            -fpic -fshort-wchar -fno-stack-protector -ffreestanding \
             -DEFI_FUNCTION_WRAPPER \
             -c src/MultiEFI.c -o build/x64/MultiEFI.o
-        ld -nostdlib -shared -Bsymbolic \
+
+        ld -nostdlib -znocombreloc -shared -Bsymbolic \
             -T /usr/lib/elf_x86_64_efi.lds \
             build/x64/MultiEFI.o \
             -o build/x64/bootx64.efi
@@ -35,10 +36,11 @@ jobs:
       run: |
         mkdir -p build/i386
         gcc -m32 -I /usr/include/efi -I /usr/include/efi/ia32 \
-            -fpic -fshort-wchar -fno-stack-protector \
+            -fpic -fshort-wchar -fno-stack-protector -ffreestanding \
             -DEFI_FUNCTION_WRAPPER \
             -c src/MultiEFI.c -o build/i386/MultiEFI.o
-        ld -m elf_i386 -nostdlib -shared -Bsymbolic \
+
+        ld -m elf_i386 -nostdlib -znocombreloc -shared -Bsymbolic \
             -T /usr/lib32/elf_ia32_efi.lds \
             build/i386/MultiEFI.o \
             -o build/i386/bootia32.efi
