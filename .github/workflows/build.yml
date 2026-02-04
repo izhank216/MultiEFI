@@ -8,23 +8,25 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
 
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y build-essential git gcc-multilib gnu-efi uuid-dev mingw-w64
+    - name: Install MSYS2 (for MinGW)
+      uses: msys2/setup-msys2@v3
+      with:
+        update: true
+        install: mingw-w64-x86_64-gcc mingw-w64-i686-gcc mingw-w64-x86_64-binutils mingw-w64-i686-binutils
 
     - name: Build x86_64 EFI (PE/COFF)
+      shell: bash
       run: |
         mkdir -p build/x64
         x86_64-w64-mingw32-gcc \
-          -I /usr/include/efi \
-          -I /usr/include/efi/x86_64 \
+          -I /c/msys64/mingw64/include/efi \
+          -I /c/msys64/mingw64/include/efi/x86_64 \
           -c src/MultiEFI.c \
           -o build/x64/MultiEFI.o \
           -DEFI_FUNCTION_WRAPPER \
@@ -36,17 +38,18 @@ jobs:
 
         x86_64-w64-mingw32-ld \
           -nostdlib \
-          -T /usr/lib/elf_x86_64_efi.lds \
+          -T /c/msys64/mingw64/lib/elf_x86_64_efi.lds \
           -shared -Bsymbolic \
           build/x64/MultiEFI.o \
           -o build/x64/bootx64.efi
 
     - name: Build i386 EFI (PE/COFF)
+      shell: bash
       run: |
         mkdir -p build/i386
         i686-w64-mingw32-gcc -m32 \
-          -I /usr/include/efi \
-          -I /usr/include/efi/ia32 \
+          -I /c/msys64/mingw32/include/efi \
+          -I /c/msys64/mingw32/include/efi/ia32 \
           -c src/MultiEFI.c \
           -o build/i386/MultiEFI.o \
           -DEFI_FUNCTION_WRAPPER \
@@ -57,7 +60,7 @@ jobs:
 
         i686-w64-mingw32-ld -m elf_i386 \
           -nostdlib \
-          -T /usr/lib32/elf_ia32_efi.lds \
+          -T /c/msys64/mingw32/lib/elf_ia32_efi.lds \
           -shared -Bsymbolic \
           build/i386/MultiEFI.o \
           -o build/i386/bootia32.efi
