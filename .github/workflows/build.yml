@@ -7,66 +7,96 @@ on:
     branches: [ main ]
 
 jobs:
-  build:
-    runs-on: windows-latest
-
+  prepare-gnu-efi:
+    runs-on: ubuntu-latest
+    outputs:
+      artifact-name: gnu-efi
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Install MSYS2 (for MinGW)
-      uses: msys2/setup-msys2@v3
-      with:
-        update: true
-        install: mingw-w64-x86_64-gcc mingw-w64-i686-gcc mingw-w64-x86_64-binutils mingw-w64-i686-binutils
+      - name: Install gnu-efi headers/libs
+        run: |
+          sudo apt update
+          sudo apt install -y gnu-efi-dev
 
-    - name: Build x86_64 EFI (PE/COFF)
-      shell: bash
-      run: |
-        mkdir -p build/x64
-        x86_64-w64-mingw32-gcc \
-          -I /c/msys64/mingw64/include/efi \
-          -I /c/msys64/mingw64/include/efi/x86_64 \
-          -c src/MultiEFI.c \
-          -o build/x64/MultiEFI.o \
-          -DEFI_FUNCTION_WRAPPER \
-          -ffreestanding \
-          -fshort-wchar \
-          -fno-stack-protector \
-          -mno-red-zone \
-          -Wall
+      - name: Package gnu-efi for Windows
+        run: |
+          mkdir -p gnu-efi
+          cp -r /usr/include/efi gnu-efi/include
+          cp -r /usr/lib/x86_64-linux-gnu/gnu-efi gnu-efi/lib
+          tar czf gnu-efi.tar.gz gnu-efi
 
-        x86_64-w64-mingw32-ld \
-          -nostdlib \
-          -T /c/msys64/mingw64/lib/elf_x86_64_efi.lds \
-          -shared -Bsymbolic \
-          build/x64/MultiEFI.o \
-          -o build/x64/bootx64.efi
+      - name: Upload gnu-efi artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnu-efi
+          path: gnu-efi.tar.gz
 
-    - name: Build i386 EFI (PE/COFF)
-      shell: bash
-      run: |
-        mkdir -p build/i386
-        i686-w64-mingw32-gcc -m32 \
-          -I /c/msys64/mingw32/include/efi \
-          -I /c/msys64/mingw32/include/efi/ia32 \
-          -c src/MultiEFI.c \
-          -o build/i386/MultiEFI.o \
-          -DEFI_FUNCTION_WRAPPER \
-          -ffreestanding \
-          -fshort-wchar \
-          -fno-stack-protector \
-          -Wall
+  build-windows:
+    runs-on: windows-latest
+    needs: prepare-gnu-efi
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-        i686-w64-mingw32-ld -m elf_i386 \
-          -nostdlib \
-          -T /c/msys64/mingw32/lib/elf_ia32_efi.lds \
-          -shared -Bsymbolic \
-          build/i386/MultiEFI.o \
-          -o build/i386/bootia32.efi
+      - name: Download gnu-efi artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gnu-efi
+          path: gnu-efi
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: MultiEFI-Binaries
-        path: build/
+      - name: Extract gnu-efi
+        run: tar -xzf gnu-efi\gnu-efi.tar.gz -C gnu-efi
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils
+
+      - name: Build x86_64 EFI (PE/COFF)
+        shell: msys2 {0}
+        run: |
+          mkdir -p build/x64
+          gcc -I gnu-efi/include \
+              -I gnu-efi/include/x86_64 \
+              -c src/MultiEFI.c \
+              -o build/x64/MultiEFI.o \
+              -DEFI_FUNCTION_WRAPPER \
+              -ffreestanding \
+              -fshort-wchar \
+              -fno-stack-protector \
+              -mno-red-zone \
+              -Wall
+
+          gcc -nostdlib -Wl,-entry:efi_main \
+              -Wl,--subsystem,10 \
+              -o build/x64/bootx64.efi build/x64/MultiEFI.o \
+              -L gnu-efi/lib/x86_64 -lgnuefi -lefi
+
+      - name: Build i386 EFI (PE/COFF)
+        shell: msys2 {0}
+        run: |
+          mkdir -p build/i386
+          gcc -m32 -I gnu-efi/include \
+              -I gnu-efi/include/ia32 \
+              -c src/MultiEFI.c \
+              -o build/i386/MultiEFI.o \
+              -DEFI_FUNCTION_WRAPPER \
+              -ffreestanding \
+              -fshort-wchar \
+              -fno-stack-protector \
+              -Wall
+
+          gcc -m32 -nostdlib -Wl,-entry:efi_main \
+              -Wl,--subsystem,10 \
+              -o build/i386/bootia32.efi build/i386/MultiEFI.o \
+              -L gnu-efi/lib/i386 -lgnuefi -lefi
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: MultiEFI-Binaries
+          path: build/
