@@ -7,54 +7,110 @@ on:
     branches: [ main ]
 
 jobs:
-  build-windows:
-    runs-on: windows-latest
+  prepare-gnu-efi:
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Install Windows-compatible EFI development tools
+        run: |
+          sudo apt update
+          sudo apt install -y mingw-w64-efi
+
+      - name: Package gnu-efi for Windows (Nested Structure)
+        run: |
+          # Create your exact preferred nested folder layout
+          mkdir -p staging/gnu-efi/gnu-efi/include
+          mkdir -p staging/gnu-efi/gnu-efi/lib/x86_64
+          mkdir -p staging/gnu-efi/gnu-efi/lib/i386
+          
+          # Copy the Windows PE-compatible headers
+          cp -r /usr/x86_64-w64-mingw32/include/efi staging/gnu-efi/gnu-efi/include/
+          
+          # Copy the Windows PE-compatible static libraries
+          cp /usr/x86_64-w64-mingw32/lib/libefi.a staging/gnu-efi/gnu-efi/lib/x86_64/
+          cp /usr/x86_64-w64-mingw32/lib/libgnuefi.a staging/gnu-efi/gnu-efi/lib/x86_64/ || true
+          
+          cp /usr/i686-w64-mingw32/lib/libefi.a staging/gnu-efi/gnu-efi/lib/i386/
+          cp /usr/i686-w64-mingw32/lib/libgnuefi.a staging/gnu-efi/gnu-efi/lib/i386/ || true
+
+          # Create the archive from inside staging so the top folder is exactly 'gnu-efi'
+          cd staging
+          tar czf ../gnu-efi.tar.gz gnu-efi
+
+      - name: Upload gnu-efi artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gnu-efi
+          path: gnu-efi.tar.gz
+
+  build-windows:
+    runs-on: windows-latest
+    needs: prepare-gnu-efi
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download gnu-efi artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: gnu-efi
+          path: gnu-efi-download
+
+      - name: Extract gnu-efi
+        run: |
+          mkdir gnu-efi
+          tar -xzf gnu-efi-download\gnu-efi.tar.gz -C gnu-efi
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
           msystem: MINGW64
           update: true
-          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils git make
-
-      - name: Clone and Compile GNU-EFI Natively
-        shell: msys2 {0}
-        run: |
-          git clone https://git.code.sf.net/p/gnu-efi/code gnu-efi-src
-          cd gnu-efi-src
-          # Compile gnu-efi explicitly using the MinGW cross-compiler tools
-          make ARCH=x86_64 HOSTCC=gcc CC=gcc AS=as LD=ld OBJCOPY=objcopy
+          install: mingw-w64-x86_64-gcc mingw-w64-x86_64-binutils
 
       - name: Build x86_64 EFI (PE/COFF)
         shell: msys2 {0}
         run: |
           mkdir -p build/x64
-          
-          # Compile your source using headers compiled natively
-          gcc -I gnu-efi-src/inc \
-              -I gnu-efi-src/inc/x86_64 \
-              -I gnu-efi-src/inc/protocol \
+          gcc -I gnu-efi/gnu-efi/include/efi \
+              -I gnu-efi/gnu-efi/include/efi/x86_64 \
               -c src/MultiEFI.c \
               -o build/x64/MultiEFI.o \
-              -DEFI_FUNCTION_WRAPPER \
               -ffreestanding \
               -fshort-wchar \
               -fno-stack-protector \
               -mno-red-zone \
               -Wall
 
-          # Link with the freshly generated native PE/COFF libraries
+          # Note: mingw-w64-efi combines everything into -lefi, no -lgnuefi needed!
           gcc -nostdlib -Wl,-e,efi_main \
               -Wl,--subsystem,10 \
               -o build/x64/bootx64.efi \
-              gnu-efi-src/gnuefi/crt0-efi-x86_64.o \
               build/x64/MultiEFI.o \
-              -L gnu-efi-src/gnuefi \
-              -L gnu-efi-src/lib \
-              -lgnuefi -lefi -lgcc
+              -L gnu-efi/gnu-efi/lib/x86_64 \
+              -lefi -lgcc
+
+      - name: Build i386 EFI (PE/COFF)
+        shell: msys2 {0}
+        run: |
+          mkdir -p build/i386
+          gcc -m32 -I gnu-efi/gnu-efi/include/efi \
+              -I gnu-efi/gnu-efi/include/efi/ia32 \
+              -c src/MultiEFI.c \
+              -o build/i386/MultiEFI.o \
+              -ffreestanding \
+              -fshort-wchar \
+              -fno-stack-protector \
+              -Wall
+
+          gcc -m32 -nostdlib -Wl,-e,efi_main \
+              -Wl,--subsystem,10 \
+              -o build/i386/bootia32.efi \
+              build/i386/MultiEFI.o \
+              -L gnu-efi/gnu-efi/lib/i386 \
+              -lefi -lgcc
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
