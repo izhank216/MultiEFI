@@ -73,8 +73,8 @@ jobs:
         shell: msys2 {0}
         run: |
           mkdir -p build/x64
-          gcc -I gnu-efi/include/efi \
-              -I gnu-efi/include/efi/x86_64 \
+          gcc -I gnu-efi/gnu-efi/include/efi \
+              -I gnu-efi/gnu-efi/include/efi/x86_64 \
               -c src/MultiEFI.c \
               -o build/x64/MultiEFI.o \
               -DEFI_FUNCTION_WRAPPER \
@@ -87,14 +87,14 @@ jobs:
           gcc -nostdlib -Wl,-entry:efi_main \
               -Wl,--subsystem,10 \
               -o build/x64/bootx64.efi build/x64/MultiEFI.o \
-              -L gnu-efi/lib/x86_64 -lgnuefi -lefi
+              -L gnu-efi/gnu-efi/lib/x86_64 -lgnuefi -lefi
 
       - name: Build i386 EFI (PE/COFF)
         shell: msys2 {0}
         run: |
           mkdir -p build/i386
-          gcc -m32 -I gnu-efi/include/efi \
-              -I gnu-efi/include/efi/ia32 \
+          gcc -m32 -I gnu-efi/gnu-efi/include/efi \
+              -I gnu-efi/gnu-efi/include/efi/ia32 \
               -c src/MultiEFI.c \
               -o build/i386/MultiEFI.o \
               -DEFI_FUNCTION_WRAPPER \
@@ -106,7 +106,7 @@ jobs:
           gcc -m32 -nostdlib -Wl,-entry:efi_main \
               -Wl,--subsystem,10 \
               -o build/i386/bootia32.efi build/i386/MultiEFI.o \
-              -L gnu-efi/lib/i386 -lgnuefi -lefi
+              -L gnu-efi/gnu-efi/lib/i386 -lgnuefi -lefi
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
