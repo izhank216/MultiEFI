@@ -1,6 +1,10 @@
 #include <efi.h>
 #include <efilib.h>
 
+#ifndef gEfiSimpleFileSystemProtocolGuid
+static EFI_GUID gEfiSimpleFileSystemProtocolGuid = EFI_SIMPLE_FILE_SYSTEM_PROTOCOL_GUID;
+#endif
+
 #define MAX_OS 10
 #define MAX_PATH 256
 #define TIMEOUT_SECONDS 5
