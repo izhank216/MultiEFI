@@ -22,10 +22,27 @@ jobs:
 
       - name: Package gnu-efi for Windows
         run: |
-          mkdir -p gnu-efi
-          dpkg -L gnu-efi
+          # Create the directory structure we need
+          mkdir -p gnu-efi/include
+          mkdir -p gnu-efi/lib/x86_64
+          mkdir -p gnu-efi/lib/i386
+          
+          # Copy headers
           cp -r /usr/include/efi gnu-efi/include
-          cp -r /usr/lib/x86_64-linux-gnu/gnu-efi gnu-efi/lib
+          
+          # Copy 64-bit library and loader files
+          cp /usr/lib/libefi.a gnu-efi/lib/x86_64/
+          cp /usr/lib/libgnuefi.a gnu-efi/lib/x86_64/
+          cp /usr/lib/crt0-efi-x86_64.o gnu-efi/lib/x86_64/
+          cp /usr/lib/elf_x86_64_efi.lds gnu-efi/lib/x86_64/
+
+          # Copy 32-bit library and loader files
+          cp /usr/lib32/libefi.a gnu-efi/lib/i386/
+          cp /usr/lib32/libgnuefi.a gnu-efi/lib/i386/
+          cp /usr/lib32/crt0-efi-ia32.o gnu-efi/lib/i386/
+          cp /usr/lib32/elf_ia32_efi.lds gnu-efi/lib/i386/
+
+          # Package it up
           tar czf gnu-efi.tar.gz gnu-efi
 
       - name: Upload gnu-efi artifact
