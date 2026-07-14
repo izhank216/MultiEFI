@@ -18,7 +18,7 @@ jobs:
       - name: Install gnu-efi headers/libs
         run: |
           sudo apt update
-          sudo apt install -y gnu-efi-dev
+          sudo apt install -y gnu-efi
 
       - name: Package gnu-efi for Windows
         run: |
