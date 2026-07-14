@@ -23,6 +23,7 @@ jobs:
       - name: Package gnu-efi for Windows
         run: |
           mkdir -p gnu-efi
+          dpkg -L gnu-efi
           cp -r /usr/include/efi gnu-efi/include
           cp -r /usr/lib/x86_64-linux-gnu/gnu-efi gnu-efi/lib
           tar czf gnu-efi.tar.gz gnu-efi
