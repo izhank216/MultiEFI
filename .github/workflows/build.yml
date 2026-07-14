@@ -22,21 +22,21 @@ jobs:
 
       - name: Package gnu-efi for Windows
         run: |
-          mkdir -p gnu-efi/include
-          mkdir -p gnu-efi/lib/x86_64
-          mkdir -p gnu-efi/lib/i386
+          mkdir -p gnu-efi/gnu-efi/include
+          mkdir -p gnu-efi/gnu-efi/lib/x86_64
+          mkdir -p gnu-efi/gnu-efi/lib/i386
           
-          cp -r /usr/include/efi gnu-efi/include
+          cp -r /usr/include/efi gnu-efi/gnu-efi/include
           
-          cp /usr/lib/libefi.a gnu-efi/lib/x86_64/
-          cp /usr/lib/libgnuefi.a gnu-efi/lib/x86_64/
-          cp /usr/lib/crt0-efi-x86_64.o gnu-efi/lib/x86_64/
-          cp /usr/lib/elf_x86_64_efi.lds gnu-efi/lib/x86_64/
+          cp /usr/lib/libefi.a gnu-efi/gnu-efi/lib/x86_64/
+          cp /usr/lib/libgnuefi.a gnu-efi/gnu-efi/lib/x86_64/
+          cp /usr/lib/crt0-efi-x86_64.o gnu-efi/gnu-efi/lib/x86_64/
+          cp /usr/lib/elf_x86_64_efi.lds gnu-efi/gnu-efi/lib/x86_64/
 
-          cp /usr/lib32/libefi.a gnu-efi/lib/i386/
-          cp /usr/lib32/libgnuefi.a gnu-efi/lib/i386/
-          cp /usr/lib32/crt0-efi-ia32.o gnu-efi/lib/i386/
-          cp /usr/lib32/elf_ia32_efi.lds gnu-efi/lib/i386/
+          cp /usr/lib32/libefi.a gnu-efi/gnu-efi/lib/i386/
+          cp /usr/lib32/libgnuefi.a gnu-efi/gnu-efi/lib/i386/
+          cp /usr/lib32/crt0-efi-ia32.o gnu-efi/gnu-efi/lib/i386/
+          cp /usr/lib32/elf_ia32_efi.lds gnu-efi/gnu-efi/lib/i386/
 
           tar czf gnu-efi.tar.gz gnu-efi
 
@@ -84,10 +84,12 @@ jobs:
               -mno-red-zone \
               -Wall
 
-          gcc -nostdlib -Wl,-entry:efi_main \
+          gcc -nostdlib -Wl,-e,efi_main \
               -Wl,--subsystem,10 \
-              -o build/x64/bootx64.efi build/x64/MultiEFI.o \
-              -L gnu-efi/gnu-efi/lib/x86_64 -lgnuefi -lefi
+              -o build/x64/bootx64.efi \
+              build/x64/MultiEFI.o \
+              -L gnu-efi/gnu-efi/lib/x86_64 \
+              -lgnuefi -lefi -lgcc
 
       - name: Build i386 EFI (PE/COFF)
         shell: msys2 {0}
@@ -103,10 +105,12 @@ jobs:
               -fno-stack-protector \
               -Wall
 
-          gcc -m32 -nostdlib -Wl,-entry:efi_main \
+          gcc -m32 -nostdlib -Wl,-e,efi_main \
               -Wl,--subsystem,10 \
-              -o build/i386/bootia32.efi build/i386/MultiEFI.o \
-              -L gnu-efi/gnu-efi/lib/i386 -lgnuefi -lefi
+              -o build/i386/bootia32.efi \
+              build/i386/MultiEFI.o \
+              -L gnu-efi/gnu-efi/lib/i386 \
+              -lgnuefi -lefi -lgcc
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
