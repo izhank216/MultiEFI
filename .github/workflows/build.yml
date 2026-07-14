@@ -22,23 +22,29 @@ jobs:
 
       - name: Package gnu-efi for Windows
         run: |
-          mkdir -p gnu-efi/gnu-efi/include
-          mkdir -p gnu-efi/gnu-efi/lib/x86_64
-          mkdir -p gnu-efi/gnu-efi/lib/i386
+          # Create a temporary staging area to prevent double-nesting on extraction
+          mkdir -p staging/gnu-efi/include
+          mkdir -p staging/gnu-efi/lib/x86_64
+          mkdir -p staging/gnu-efi/lib/i386
           
-          cp -r /usr/include/efi gnu-efi/gnu-efi/include
+          # Copy headers
+          cp -r /usr/include/efi staging/gnu-efi/include
           
-          cp /usr/lib/libefi.a gnu-efi/gnu-efi/lib/x86_64/
-          cp /usr/lib/libgnuefi.a gnu-efi/gnu-efi/lib/x86_64/
-          cp /usr/lib/crt0-efi-x86_64.o gnu-efi/gnu-efi/lib/x86_64/
-          cp /usr/lib/elf_x86_64_efi.lds gnu-efi/gnu-efi/lib/x86_64/
+          # Copy 64-bit library files
+          cp /usr/lib/libefi.a staging/gnu-efi/lib/x86_64/
+          cp /usr/lib/libgnuefi.a staging/gnu-efi/lib/x86_64/
+          cp /usr/lib/crt0-efi-x86_64.o staging/gnu-efi/lib/x86_64/
+          cp /usr/lib/elf_x86_64_efi.lds staging/gnu-efi/lib/x86_64/
 
-          cp /usr/lib32/libefi.a gnu-efi/gnu-efi/lib/i386/
-          cp /usr/lib32/libgnuefi.a gnu-efi/gnu-efi/lib/i386/
-          cp /usr/lib32/crt0-efi-ia32.o gnu-efi/gnu-efi/lib/i386/
-          cp /usr/lib32/elf_ia32_efi.lds gnu-efi/gnu-efi/lib/i386/
+          # Copy 32-bit library files
+          cp /usr/lib32/libefi.a staging/gnu-efi/lib/i386/
+          cp /usr/lib32/libgnuefi.a staging/gnu-efi/lib/i386/
+          cp /usr/lib32/crt0-efi-ia32.o staging/gnu-efi/lib/i386/
+          cp /usr/lib32/elf_ia32_efi.lds staging/gnu-efi/lib/i386/
 
-          tar czf gnu-efi.tar.gz gnu-efi
+          # Tar from inside the staging folder to keep your precise structure
+          cd staging
+          tar czf ../gnu-efi.tar.gz gnu-efi
 
       - name: Upload gnu-efi artifact
         uses: actions/upload-artifact@v4
@@ -57,10 +63,12 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: gnu-efi
-          path: gnu-efi
+          path: gnu-efi-download
 
       - name: Extract gnu-efi
-        run: tar -xzf gnu-efi\gnu-efi.tar.gz -C gnu-efi
+        run: |
+          mkdir gnu-efi
+          tar -xzf gnu-efi-download\gnu-efi.tar.gz -C gnu-efi
 
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
